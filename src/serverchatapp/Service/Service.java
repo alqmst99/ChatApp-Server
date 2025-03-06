@@ -1,0 +1,61 @@
+package serverchatapp.Service;
+
+import com.corundumstudio.socketio.AckRequest;
+import com.corundumstudio.socketio.Configuration;
+import com.corundumstudio.socketio.SocketIOClient;
+import com.corundumstudio.socketio.SocketIOServer;
+import com.corundumstudio.socketio.listener.ConnectListener;
+import com.corundumstudio.socketio.listener.DataListener;
+import javax.management.modelmbean.ModelMBean;
+import javax.swing.JTextArea;
+import serverchatapp.Model.Model_Message;
+import serverchatapp.Model.Model_Register;
+
+/**
+ *
+ * @author Nahuel Pierini
+ * @Enterprise: FSTailSolution
+ */
+public class Service {
+    
+    private static Service instance;
+    private SocketIOServer server;
+    private JTextArea txtArea;
+    private final int PORT_NUMBER = 9999;
+    
+    public static Service getInstance(JTextArea txtArea) {
+        if (instance == null) {
+            instance = new Service(txtArea);
+        }
+        return instance;
+    }
+
+    private Service(JTextArea txtArea) {
+        this.txtArea = txtArea;
+    }
+    
+    public void startServer() {
+        Configuration config = new Configuration();
+        config.setPort(PORT_NUMBER);
+        server = new SocketIOServer(config);
+        server.addConnectListener(new ConnectListener() {
+            @Override
+            public void onConnect(SocketIOClient sioc) {
+                txtArea.append("One client connected \n");
+            }
+        });
+        
+        server.addEventListener("register", Model_Register.class, new DataListener<Model_Register>() {
+            @Override
+            public void onData(SocketIOClient sioc, Model_Register t, AckRequest ar) throws Exception {
+               
+                Model_Message message = new UserService().register(t);
+                ar.sendAckData(message.isAction(), message.getMessage());
+                txtArea.append("User has Register : "+ t.getUserName()+", Pass : "+t.getPassword()+"\n");
+            }
+        });
+        server.start();
+        txtArea.append("Server has Started on Port: " + PORT_NUMBER + "\n");
+    }
+    
+}
