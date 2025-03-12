@@ -9,6 +9,7 @@ import com.corundumstudio.socketio.listener.DataListener;
 import java.util.ArrayList;
 import java.util.List;
 import javax.swing.JTextArea;
+import serverchatapp.Model.Model_Login;
 import serverchatapp.Model.Model_Message;
 import serverchatapp.Model.Model_Register;
 import serverchatapp.Model.Model_User_Account;
@@ -57,8 +58,22 @@ public class Service {
                 ar.sendAckData(message.isAction(), message.getMessage(), message.getData());
                 if (message.isAction()) {
                     txtArea.append("User has Register : " + t.getUserName() + ", Pass : " + t.getPassword() + "\n");
+                    server.getBroadcastOperations().sendEvent("list_user", (Model_User_Account) message.getData());
                 }
             }
+        });
+        
+        server.addEventListener("login",Model_Login.class ,new DataListener<Model_Login>() {
+            @Override
+            public void onData(SocketIOClient sioc, Model_Login t, AckRequest ar) throws Exception {
+               Model_User_Account login = userService.login(t);
+                if(login != null){
+                    ar.sendAckData(true, login);
+                } else {
+                    ar.sendAckData(false);
+                }
+            }
+           
         });
 
         server.addEventListener("list_user", Integer.class, new DataListener<Integer>() {
