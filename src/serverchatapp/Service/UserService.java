@@ -9,6 +9,7 @@ import serverchatapp.Model.Model_Register;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import serverchatapp.Model.Model_Client;
 import serverchatapp.Model.Model_Login;
 import serverchatapp.Model.Model_User_Account;
 
@@ -28,7 +29,7 @@ public class UserService {
         Model_Message message = new Model_Message();
         try {
             con.setAutoCommit(false);
-            PreparedStatement ps = (PreparedStatement) con.prepareStatement(checkQuery);
+            PreparedStatement ps = (PreparedStatement) con.prepareStatement(CHECK_QUERY);
             ps.setString(1, reg.getUserName());
 
             ResultSet rs = ps.executeQuery();
@@ -43,7 +44,7 @@ public class UserService {
             if (message.isAction()) {
 
                 //insert user register
-                ps = (PreparedStatement) con.prepareStatement(query, PreparedStatement.RETURN_GENERATED_KEYS);
+                ps = (PreparedStatement) con.prepareStatement(QUERY, PreparedStatement.RETURN_GENERATED_KEYS);
                 ps.setString(1, reg.getUserName());
                 ps.setString(2, reg.getPassword());
                 ps.execute();
@@ -54,7 +55,7 @@ public class UserService {
                     rs.close();
                     ps.close();
                     //create user account
-                    ps = (PreparedStatement) con.prepareStatement(query2);
+                    ps = (PreparedStatement) con.prepareStatement(QUERY_2);
                     ps.setInt(1, userID);
                     ps.setString(2, reg.getUserName());
                     ps.execute();
@@ -134,7 +135,7 @@ public class UserService {
                 String gerder = rs.getString(3);
                 String imageString = rs.getString(4);
 
-                list.add(new Model_User_Account(userID, userName, gerder, imageString, true));
+                list.add(new Model_User_Account(userID, userName, gerder, imageString, checkUserStatus(userID)));
 
             }
             rs.close();
@@ -146,17 +147,28 @@ public class UserService {
         }
         return list;
     }
+    
+    private boolean checkUserStatus(int userID){
+        List<Model_Client> clients= Service.getInstance(null).getListClient();
+        for (Model_Client c : clients){
+            if(c.getUser().getId() == userID){
+                return true;
+                
+            }
+        }
+        return false;
+    }
 
     //SQL
     private final String LOGIN = "SELECT id, user_account.userName, gender, imageString FROM user JOIN user_account USING (id) WHERE user.userName= BINARY(?) AND user.password = BINARY(?) AND user_account.status ='1'";
 
     private final String USER_ACCOUNT = "SELECT id, userName, gender, imageString FROM user_account WHERE  status = '1' AND id <> ?";
 
-    private final String query = "INSERT INTO user (userName, `password`) VALUES (?, ?)";
+    private final String QUERY = "INSERT INTO user (userName, `password`) VALUES (?, ?)";
 
-    private final String checkQuery = "SELECT id FROM user WHERE userName = ? LIMIT 1";
+    private final String CHECK_QUERY = "SELECT id FROM user WHERE userName = ? LIMIT 1";
 
-    private final String query2 = "INSERT INTO user_account (id, userName) VALUES (?, ?)";
+    private final String QUERY_2 = "INSERT INTO user_account (id, userName) VALUES (?, ?)";
 
     //Instance
     private final Connection con;

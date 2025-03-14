@@ -6,9 +6,11 @@ import com.corundumstudio.socketio.SocketIOClient;
 import com.corundumstudio.socketio.SocketIOServer;
 import com.corundumstudio.socketio.listener.ConnectListener;
 import com.corundumstudio.socketio.listener.DataListener;
+import com.corundumstudio.socketio.listener.DisconnectListener;
 import java.util.ArrayList;
 import java.util.List;
 import javax.swing.JTextArea;
+import serverchatapp.Model.Model_Client;
 import serverchatapp.Model.Model_Login;
 import serverchatapp.Model.Model_Message;
 import serverchatapp.Model.Model_Register;
@@ -24,6 +26,8 @@ public class Service {
     private static Service instance;
     private SocketIOServer server;
     private UserService userService;
+
+    private List<Model_Client> listClient;
     private JTextArea txtArea;
     private final int PORT_NUMBER = 9999;
 
@@ -37,6 +41,7 @@ public class Service {
     private Service(JTextArea txtArea) {
         this.txtArea = txtArea;
         userService = new UserService();
+        listClient= new ArrayList<>();
     }
 
     public void startServer() {
@@ -50,6 +55,7 @@ public class Service {
             }
         });
 
+        //Event Register user
         server.addEventListener("register", Model_Register.class, new DataListener<Model_Register>() {
             @Override
             public void onData(SocketIOClient sioc, Model_Register t, AckRequest ar) throws Exception {
@@ -59,23 +65,29 @@ public class Service {
                 if (message.isAction()) {
                     txtArea.append("User has Register : " + t.getUserName() + ", Pass : " + t.getPassword() + "\n");
                     server.getBroadcastOperations().sendEvent("list_user", (Model_User_Account) message.getData());
+                    addClient(sioc, (Model_User_Account) message.getData());
                 }
             }
         });
         
+        //Event login 
         server.addEventListener("login",Model_Login.class ,new DataListener<Model_Login>() {
             @Override
             public void onData(SocketIOClient sioc, Model_Login t, AckRequest ar) throws Exception {
                Model_User_Account login = userService.login(t);
                 if(login != null){
                     ar.sendAckData(true, login);
+                    addClient(sioc, login);
+                    userConnect(login.getId());
+                    
                 } else {
                     ar.sendAckData(false);
                 }
             }
            
         });
-
+        
+        //Event list all users
         server.addEventListener("list_user", Integer.class, new DataListener<Integer>() {
             @Override
             public void onData(SocketIOClient sioc, Integer userID, AckRequest ar) throws Exception {
@@ -87,8 +99,50 @@ public class Service {
                 }
             }
         });
+        
+        //event Disconect client 
+        server.addDisconnectListener(new DisconnectListener() {
+            @Override
+            public void onDisconnect(SocketIOClient sioc) {
+               int userID = removeClient(sioc);
+               if(userID !=0 ){
+                   //removed
+                   userDesconect(userID);
+               }
+            }
+        });
+        
         server.start();
         txtArea.append("Server has Started on Port: " + PORT_NUMBER + "\n");
     }
 
+    
+    private void userConnect(int id){
+        server.getBroadcastOperations().sendEvent("user_status", id, true);
+    }
+    
+    private void userDesconect(int id){
+        server.getBroadcastOperations().sendEvent("user_status",id, false);
+    }
+    
+    //client connected
+    private void addClient(SocketIOClient client, Model_User_Account user){
+        listClient.add(new Model_Client(client, user));
+    }
+
+    //disconect user (Logout)
+    public int removeClient(SocketIOClient cl){
+        for (Model_Client u : listClient){
+            if(u.getClient()== cl){
+                listClient.remove(u);
+                return u.getUser().getId();
+            }
+        }
+        return 0;
+    }
+    
+    //list all users
+    public List<Model_Client> getListClient() {
+        return listClient;
+    }
 }
