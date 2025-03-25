@@ -13,7 +13,9 @@ import javax.swing.JTextArea;
 import serverchatapp.Model.Model_Client;
 import serverchatapp.Model.Model_Login;
 import serverchatapp.Model.Model_Message;
+import serverchatapp.Model.Model_Recive_Message;
 import serverchatapp.Model.Model_Register;
+import serverchatapp.Model.Model_Send_Message;
 import serverchatapp.Model.Model_User_Account;
 
 /**
@@ -100,6 +102,18 @@ public class Service {
             }
         });
         
+        server.addEventListener("send_to_user", Model_Send_Message.class, new DataListener<Model_Send_Message>() {
+            @Override
+            public void onData(SocketIOClient sioc, Model_Send_Message t, AckRequest ar) throws Exception {
+                  
+                
+                
+                sendToClient(t);
+            }
+        }
+            
+        );
+        
         //event Disconect client 
         server.addDisconnectListener(new DisconnectListener() {
             @Override
@@ -130,6 +144,15 @@ public class Service {
         listClient.add(new Model_Client(client, user));
     }
 
+    //send message to the client
+    public void sendToClient(Model_Send_Message data){
+        for(Model_Client c: listClient){
+            c.getClient().sendEvent("recive_ms", new Model_Recive_Message(data.getFromUserId(),data.getText()));
+          break;
+        }
+        
+    }
+    
     //disconect user (Logout)
     public int removeClient(SocketIOClient cl){
         for (Model_Client u : listClient){
@@ -140,6 +163,8 @@ public class Service {
         }
         return 0;
     }
+    
+    
     
     //list all users
     public List<Model_Client> getListClient() {
